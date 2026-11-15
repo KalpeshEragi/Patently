@@ -137,8 +137,8 @@ The full story, including what broke and how it was fixed, is in **[docs/PROJECT
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/KalpeshEragi/nlp-based-computational-analysis-of-patent-novelty.git
-cd nlp-based-computational-analysis-of-patent-novelty
+git clone https://github.com/KalpeshEragi/Patently.git
+cd Patently
 
 python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
