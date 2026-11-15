@@ -310,6 +310,45 @@ P(disclosed) ≥ 0.708 counts as disclosed, ≥ 0.592 for the combination check)
 On the granted patent US9968239B2 the analysis moved from "13 × not novel"
 (untuned) to **6 inventive + 7 obvious → likely patentable**, matching the real grant.
 
+### Final held-out test (2,878 claims, run once with the final setup)
+
+Disclosed honestly: this is the **second** look at the test set. The first was
+before the `n_refs` leak was found and before the disclosure model changed; nothing
+was tuned on test results either time.
+
+| Model | Accuracy | Macro-F1 |
+|---|---|---|
+| Majority class (always §103) | 0.505 | 0.224 |
+| Random | 0.320 | 0.309 |
+| Rule engine, default | 0.309 | 0.302 |
+| Rule engine, tuned on validation | 0.423 | 0.379 |
+| **Outcome model (LightGBM)** | **0.509** | **0.494** |
+
+Per class: §102 F1 0.494, §103 0.569, allowed 0.418; macro ROC-AUC 0.692.
+Test (0.494) is close to validation CV (0.517), so the model is not overfit.
+The strongest SHAP factors were claim depth, wording overlap, the weakest disclosed
+feature, feature count and claim length.
+
+### Making "allowed" predictions cautious (`eval/tune_allow.py`)
+
+The two errors don't cost the same. Predicting **allowed** when the examiner found
+prior art is the dangerous one, and macro-F1 treats it like any other mistake. So the
+model now says "allowed" only when P(allowed) ≥ **0.48**; otherwise it picks the more
+likely rejection. The cutoff was chosen on **validation out-of-fold probabilities only**
+(the best macro-F1 with a false-allow rate ≤ 10%), then applied to test once.
+
+| Test set (2,878 claims) | Plain argmax | Cautious (t = 0.48) | Rule engine, tuned |
+|---|---|---|---|
+| False-allow rate (said allowed, examiner rejected) | 20.6% | **12.8%** | 30.2% |
+| Recall on prior-art cases (§102 + §103) | 79.4% | **87.2%** | 69.8% |
+| Allowed recall / precision | 47.2% / 37.5% | 32.2% / 39.7% | |
+| Macro-F1 | 0.494 | 0.483 | 0.379 |
+| Accuracy | 0.509 | 0.516 | 0.423 |
+
+Trade-off: the false-allow rate fell by about 40% (271 fewer dangerous errors). The
+cost was fewer correctly predicted allowances and 0.011 of macro-F1. The live app uses
+the cautious cutoff (`allow_threshold` in `analysis/outcome_model/meta.json`).
+
 ---
 
 ## 10. Backend API (`api/main.py`) — module M2
@@ -339,7 +378,28 @@ analysis) — **26 s** on an RTX 2050 with stage-by-stage progress.
 
 ---
 
-## 11. Engineering timeline (what broke and how it was fixed)
+## 11. Frontend (`frontend/`, Next.js) — module M3
+
+Next.js 15 (App Router, TypeScript, Tailwind 4) built as a **static export**
+(`frontend/out`), which FastAPI serves itself, so deployment is one server on one port.
+In development `next dev` runs on :3000 and talks to the API on :8000.
+
+Four steps:
+1. **Document**: upload PDF/DOCX/TXT, or fetch a patent number from Google Patents.
+2. **Technology**: the CPC classifier's top 5 subclasses; the user keeps or drops each,
+   and chooses fast or thorough mode.
+3. **Search**: live progress from the job endpoint.
+4. **Report**: overall verdict and claim breakdown. Each claim opens to show novelty
+   and inventive scores, the closest reference, a feature chart with evidence passages,
+   distinguishing features, the technical advancement, and the separate examiner-outcome
+   prediction with its SHAP factors in plain words.
+
+The site follows the system light/dark theme and works at phone width with no sideways
+scroll. Tested end to end on US9968239B2 (fetch → CPC → 15–24 s analysis → report).
+
+---
+
+## 12. Engineering timeline (what broke and how it was fixed)
 
 - HUPD stream kept almost nothing at first: CPC labels are missing before 2013 → IPC fallback.
 - Local GPU (4 GB) too small for training → Kaggle T4; laptop used for inference.
