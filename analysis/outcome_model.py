@@ -48,6 +48,11 @@ class OutcomePredictor:
         x = np.array([[feats[n] for n in FEATURE_NAMES]], dtype=float)
         probs = self.booster.predict(x)[0]
         k = int(np.argmax(probs))
+        # cautious "allowed": only when P(allowed) clears the cutoff tuned on validation
+        # (eval/tune_allow.py), since a wrong "allowed" costs more than a wrong rejection
+        t = self.meta.get("allow_threshold", {}).get("t")
+        if t is not None:
+            k = 2 if probs[2] >= t else int(np.argmax(probs[:2]))
         # per-claim explanation: SHAP contributions toward the predicted class
         contrib = self.booster.predict(x, pred_contrib=True)[0]
         n = len(FEATURE_NAMES) + 1
