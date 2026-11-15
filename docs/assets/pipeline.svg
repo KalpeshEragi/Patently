@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" width="960" height="640" role="img" aria-labelledby="t d">
+  <title id="t">The Patently pipeline</title>
+  <desc id="d">A three-layer funnel narrows 100,000 patents to the closest references, then a legal engine and an outcome model judge each claim.</desc>
+  <defs>
+    <style>
+      .sans { font-family: Inter, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .mono { font-family: "JetBrains Mono", Consolas, Menlo, monospace; }
+      .h { font-size: 17px; font-weight: 700; fill: #f3f1ea; }
+      .p { font-size: 13px; fill: #a9b6c7; }
+      .tag { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; }
+      .num { font-size: 22px; font-weight: 700; fill: #f3f1ea; }
+      .small { font-size: 12px; fill: #7f8ea3; }
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#4b5d78"/>
+    </marker>
+  </defs>
+  <rect width="960" height="640" rx="20" fill="#0f1724"/>
+
+  <text x="40" y="52" class="sans" font-size="22" font-weight="700" fill="#f3f1ea">How a claim gets judged</text>
+  <text x="40" y="76" class="sans p">Each layer is cheaper than the next, so the expensive models only see the patents that matter.</text>
+
+  <!-- input -->
+  <g class="sans" transform="translate(40 100)">
+    <rect width="880" height="58" rx="12" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.1"/>
+    <text x="20" y="25" class="tag" fill="#8fb8de">INPUT</text>
+    <text x="20" y="45" class="p">PDF · DOCX · TXT upload, or a patent number fetched from Google Patents  →  title, abstract, summary, numbered claims, priority date</text>
+  </g>
+  <path d="M480 160v18" stroke="#4b5d78" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- funnel bars -->
+  <g class="sans">
+    <g transform="translate(40 186)">
+      <rect width="880" height="84" rx="12" fill="#1d3a5f"/>
+      <text x="22" y="28" class="tag" fill="#8fb8de">LAYER 1 · TECHNOLOGY AREA</text>
+      <text x="22" y="52" class="h">CPC classifier picks the field; the user confirms it</text>
+      <text x="22" y="72" class="p">PatentSBERTa + linear head · 320 CPC subclasses · trained on 166,584 patents · Asymmetric Loss</text>
+      <text x="858" y="44" class="num" text-anchor="end">100,000</text>
+      <text x="858" y="64" class="small" text-anchor="end">patents in the index</text>
+    </g>
+    <path d="M480 272v18" stroke="#4b5d78" stroke-width="2" marker-end="url(#arr)"/>
+
+    <g transform="translate(110 298)">
+      <rect width="740" height="84" rx="12" fill="#1f4a6b"/>
+      <text x="22" y="28" class="tag" fill="#9fd3e6">LAYER 2 · PATENT SEARCH</text>
+      <text x="22" y="52" class="h">Keyword + meaning search, merged</text>
+      <text x="22" y="72" class="p">BM25 (bm25s) + dense PatentSBERTa vectors · Reciprocal Rank Fusion</text>
+      <text x="718" y="44" class="num" text-anchor="end">~2,600 → 200</text>
+      <text x="718" y="64" class="small" text-anchor="end">after CPC filter → shortlist</text>
+    </g>
+    <path d="M480 384v18" stroke="#4b5d78" stroke-width="2" marker-end="url(#arr)"/>
+
+    <g transform="translate(180 410)">
+      <rect width="600" height="84" rx="12" fill="#22585f"/>
+      <text x="22" y="28" class="tag" fill="#9fe0cf">LAYER 3 · CLAIM MATCHING</text>
+      <text x="22" y="52" class="h">Every claim vs every reference claim, live</text>
+      <text x="22" y="72" class="p">GPU-encoded on the fly, nothing pre-computed</text>
+      <text x="578" y="44" class="num" text-anchor="end">3–5</text>
+      <text x="578" y="64" class="small" text-anchor="end">references per claim</text>
+    </g>
+    <path d="M480 496v18" stroke="#4b5d78" stroke-width="2" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- judgement row -->
+  <g class="sans" transform="translate(40 522)">
+    <rect width="430" height="92" rx="12" fill="#ffffff" fill-opacity="0.05" stroke="#e9c46a" stroke-opacity="0.5"/>
+    <text x="20" y="27" class="tag" fill="#e9c46a">LEGAL ANALYSIS · EPO PROBLEM-SOLUTION</text>
+    <text x="20" y="50" class="p">Cross-encoder scores P(feature disclosed) per reference.</text>
+    <text x="20" y="68" class="p">All in one reference → not novel · spread across</text>
+    <text x="20" y="86" class="p">references → obvious · found nowhere → inventive</text>
+
+    <rect x="450" width="430" height="92" rx="12" fill="#ffffff" fill-opacity="0.05" stroke="#c4a7e7" stroke-opacity="0.5"/>
+    <text x="470" y="27" class="tag" fill="#c4a7e7">EXAMINER OUTCOME · SEPARATE MODEL</text>
+    <text x="470" y="50" class="p">LightGBM on 29 evidence features predicts §102 / §103 /</text>
+    <text x="470" y="68" class="p">allowed, explained with SHAP. Cautious cutoff: says</text>
+    <text x="470" y="86" class="p">"allowed" only when P ≥ 0.48 (tuned on validation).</text>
+  </g>
+</svg>

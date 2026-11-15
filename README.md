@@ -1,166 +1,257 @@
 <div align="center">
 
-# ⚖️ Computational Analysis of Patent Novelty Using NLP
+<img src="docs/assets/hero.svg" alt="Patently: search 100,000 patents and judge every claim the way a patent examiner would" width="100%"/>
 
-**A computational microservice for automated patentability assessment using NLP and semantic embeddings.**
+<br/>
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg?logo=python&logoColor=white)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B.svg?logo=streamlit&logoColor=white)](https://streamlit.io)
-[![Sentence Transformers](https://img.shields.io/badge/Sentence%20Transformers-MiniLM-orange.svg)]()
-[![spaCy](https://img.shields.io/badge/NLP-spaCy-09A3D5.svg?logo=spacy&logoColor=white)]()
-[![Google Gemini](https://img.shields.io/badge/LLM-Gemini-4285F4.svg?logo=google&logoColor=white)]()
-[![License](https://img.shields.io/badge/License-MIT-green.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.9-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Transformers](https://img.shields.io/badge/HF%20Transformers-5.0-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/docs/transformers)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.121-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![LightGBM](https://img.shields.io/badge/LightGBM-4.7-9ACD32)](https://lightgbm.readthedocs.io)
+
+**[How it works](#how-it-works)** · **[Results](#results)** · **[Quick start](#quick-start)** · **[Project layout](#project-layout)** · **[Contributing](#contributing)** · **[Full write-up](docs/PROJECT.md)**
 
 </div>
 
 ---
 
-## 🛑 Problem Statement
-The patent review process is fundamentally bottlenecked. Determining if a new patent claim is truly "novel" (the inventive step) requires manual, highly subjective cross-referencing against massive troves of prior art. It takes thousands of hours of expert legal analysis to find the exact overlapping clauses and functions.
+## What it does
 
-## 💡 Solution Overview
-This project presents an **AI-powered computational inference engine** designed to solve this at scale. It acts as a modular microservice that ingests patent claims and prior art data, tokenizes them using NLP, computes dense semantic embeddings, and runs a strict, mathematical rule-based engine to quantitatively prove or disprove the novelty of a patent claim. 
+You give Patently a patent application (PDF, DOCX, TXT, or a patent number). It:
 
-## ✨ Key Features
-- **Semantic Claim Extraction**: Deconstructs dense legal text into distinct `components` (nouns) and `functions` (verbs).
-- **Dense Vector Embeddings**: Uses high-dimensional vector representations to find the most semantically related prior art.
-- **Rule-Based Inference Engine**: An algorithm that computes overlap ratios and relation similarities to output deterministic verdicts (`INVENTIVE`, `WEAK INVENTIVE`, `NOT INVENTIVE`).
-- **Graph Visualization**: Dynamically builds bipartite Knowledge Graphs to visually prove the relations between components and functions.
-- **LLM Summarization**: Feeds mathematical outputs into Google Gemini to generate human-readable, legal-style summaries.
-- **Interactive Dashboard**: A beautiful, real-time Streamlit UI providing a bird's-eye view of all pipeline metrics.
+1. **Suggests the technology area** (CPC class), and you confirm it.
+2. **Searches 100,000 older patents** for prior art, using keywords and meaning together.
+3. **Compares every claim**, feature by feature, against the closest references.
+4. **Judges each claim** the way the European Patent Office does: *not novel*, *obvious*, or *inventive*. Each verdict comes with the evidence passage and the reason.
+5. **Predicts the examiner's decision** (§102 rejection, §103 rejection, or allowed) with a separate model, and says which factors drove it.
 
----
+Everything runs live. Nothing is pre-computed for the demo patents.
 
-## 🛠️ Tech Stack
-
-| Domain | Technology | Use Case |
-| :--- | :--- | :--- |
-| **Language** | `Python` | Core backend logic & scripting |
-| **NLP** | `spaCy` | Tokenization, POS tagging, and entity extraction |
-| **Embeddings** | `SentenceTransformers` | `MiniLM-L6-v2` for dense vector creation |
-| **Similarity** | `scikit-learn` & `numpy` | Cosine similarity computations |
-| **LLM Inference** | `Google Gemini API` | Narrative legal summary generation |
-| **Graphing** | `NetworkX` & `Matplotlib` | Bipartite claim visualization |
-| **Frontend UI** | `Streamlit` | Interactive data dashboard |
+> Automated research aid, not legal advice.
 
 ---
 
-## ⚙️ Architecture & Data Workflow
+## How it works
 
-This microservice is built with strict separation of concerns, executing through a 6-step pipeline:
+<img src="docs/assets/pipeline.svg" alt="Three-layer funnel: CPC classifier, hybrid patent search, live claim matching, then legal analysis and the examiner-outcome model" width="100%"/>
 
-1. **Input Generation:** Ingests mock JSON dicts representing upstream Prior Art search results.
-2. **Parsing (`claim_parser.py`):** spaCy extracts core structural representations of the claim.
-3. **Embedding (`similarity.py`):** Sentences are vectorized and ranked via Cosine Similarity (Top-K).
-4. **Comparison (`comparator.py`):** Calculates precise subset matching for components and functions against the highest-ranked prior art.
-5. **Decision (`inventive_engine.py`):** The logic gateway rules on the novelty based on the mathematical thresholds.
-6. **Visualization & UI (`graph.py`/`app.py`):** Outputs are pushed to NetworkX graphs or rendered into the Streamlit dashboard.
+<details>
+<summary><b>Layer 1: CPC classifier</b> (narrows the search to the right technology)</summary>
+
+- **Model:** PatentSBERTa encoder + mean pooling + a linear layer over **320 CPC subclasses**, so one patent can have several labels.
+- **Data:** **166,584** HUPD patents, with splits by year (train 2011–2015, validation 2016, test 2017).
+  v2 warm-started from v1 and added 102k new CPC-labelled patents.
+- **Training:** Asymmetric Loss for the long tail of rare classes, early stopping, 2× T4 on Kaggle.
+- **Result:** a correct class is in the **top 3 for 92.7%** of test patents (**top 5: 95.2%**).
+- The user ticks the classes to keep, so a wrong guess never silently hides prior art.
+
+</details>
+
+<details>
+<summary><b>Layer 2: hybrid patent search</b> (100,000 → 200 candidates)</summary>
+
+- **Keyword:** BM25 (`bm25s`) over title, abstract and claims.
+- **Meaning:** PatentSBERTa vectors for abstract, summary and claims (fp16, L2-normalised, memory-mapped).
+- The two rankings are merged with **Reciprocal Rank Fusion**, then filtered by the confirmed CPC classes and the priority date.
+- **Memory:** patent text sits in an on-disk SQLite store, and only IDs, titles, CPC codes and dates stay in RAM. This keeps memory low enough to run on a laptop.
+
+</details>
+
+<details>
+<summary><b>Layer 3: claim matching</b> (live, on the GPU)</summary>
+
+- Claims are split with a parser that cleans office-action noise (100% of 7,392 PANORAMA validation claims parse).
+- Every query claim is encoded against every claim of the shortlisted patents **at request time**.
+- Limiting this to the top 200 patents cut it from **~60 s to 17–19 s** on an RTX 2050.
+
+</details>
+
+<details>
+<summary><b>Legal analysis: EPO problem-solution approach</b></summary>
+
+- Each claim is broken into **features** (component, function, parameters) with spaCy.
+- A **patent-trained cross-encoder** scores *P(feature is disclosed)* against each reference paragraph, blended with semantic, lexical and syntactic signals.
+- **Rules:**
+  - every feature in one reference → **not novel**;
+  - the missing (distinguishing) features are found in other references → **obvious**;
+  - a distinguishing feature found nowhere → **inventive**.
+- Distinguishing features are labelled *new component*, *same component, new function* or *different parameter*.
+- Technical or economic **advancements** linked to them strengthen the inventive finding.
+- Thresholds were tuned on validation data (`analysis/disclosure_weights.json`).
+
+</details>
+
+<details>
+<summary><b>Examiner-outcome model</b> (separate from the legal reasoning)</summary>
+
+- **LightGBM**, 3 classes, using **29 features** drawn from the evidence: coverage, disclosure scores, claim depth, and others.
+- **Splits:** by application, grouped 5-fold CV on validation, and an untouched test set.
+- **SHAP** explains each prediction. It also exposed a feature that leaked the answer (the number of examiner-cited references), which was removed.
+- **Cautious cutoff:** "allowed" is predicted only when P(allowed) ≥ 0.48, chosen on validation. A wrong "allowed" costs more than a wrong rejection.
+
+</details>
+
+### Architecture
+
+<img src="docs/assets/architecture.svg" alt="Next.js frontend, FastAPI backend with background jobs, four models and an on-disk index" width="100%"/>
 
 ---
 
-## 📂 Project Structure
+## Results
 
-```text
-├── data/                    # Upstream mocking data (Prior Art datasets)
-├── outputs/                 # Directory for generated reports and network graphs
-├── .env.example             # Template for API keys
-├── .gitignore               # Ignored system files & cache
-├── requirements.txt         # Project dependencies
-├── app.py                   # Streamlit Frontend Dashboard
-├── claim_parser.py          # NLP tokenization module
-├── comparator.py            # Component overlap module
-├── graph.py                 # NetworkX visualization module
-├── inventive_engine.py      # Core logic/inference algorithm
-├── main.py                  # CLI Orchestration pipeline
-├── similarity.py            # Vector embedding and semantic search scoring
-└── summary.py               # Google Gemini LLM wrapper
-```
+<img src="docs/assets/results.svg" alt="Results: cited-paragraph top-1 53.7%, false-allow rate 12.8%, outcome macro-F1 0.494" width="100%"/>
+
+All numbers are on held-out data from **PANORAMA** (real USPTO office actions). Splits are by application, every setting was tuned on validation only, and the test set was kept untouched.
+
+| What | Result | Baseline |
+|---|---|---|
+| CPC classifier, correct class in top 3 / top 5 | **92.7% / 95.2%** | — |
+| Disclosure model: picks the examiner-cited paragraph out of 5 | **53.7%** | general NLI 44.8%, random 20% |
+| Prior-art cases caught (§102 + §103 recall) | **87.2%** | rule engine 69.8% |
+| Wrongly predicts "allowed" (false-allow rate) | **12.8%** | rule engine 30.2% |
+| Examiner outcome, macro-F1 (3 classes) | **0.494** | tuned rules 0.379, random 0.309 |
+
+<details>
+<summary>Confusion matrix (test set, 2,878 claims, cautious cutoff)</summary>
+
+| examiner ↓ / model → | §102 | §103 | Allowed |
+|---|---|---|---|
+| **§102** (828) | 508 | 243 | 77 |
+| **§103** (1,453) | 452 | 786 | 215 |
+| **Allowed** (597) | 227 | 178 | 192 |
+
+</details>
+
+**Limits:**
+- Only 1.6% of the references examiners cite are in the 100k index, so the legal verdicts are judged against the prior art the system finds, not the examiner's own.
+- Examiner decisions are noisy: experts agree with each other about 75% of the time.
+
+The full story, including what broke and how it was fixed, is in **[docs/PROJECT.md](docs/PROJECT.md)**.
 
 ---
 
-## 🚀 Installation & Setup
+## Quick start
 
-**1. Clone the repository**
+### 1. Clone and install
+
 ```bash
-git clone https://github.com/yourusername/computational-analysis-of-patent-novelty.git
-cd computational-analysis-of-patent-novelty
-```
+git clone https://github.com/KalpeshEragi/nlp-based-computational-analysis-of-patent-novelty.git
+cd nlp-based-computational-analysis-of-patent-novelty
 
-**2. Create a virtual environment**
-```bash
 python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
-```
-
-**3. Install dependencies**
-```bash
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-**4. Download the required spaCy NLP model**
-```bash
 python -m spacy download en_core_web_sm
 ```
 
-**5. Configure Environment Variables**
-Copy the example environment file and insert your API credentials for the LLM summaries.
+A GPU is optional but recommended. Install the CUDA build of PyTorch from [pytorch.org](https://pytorch.org/get-started/locally/) before the requirements.
+
+### 2. Build the data and models
+
+The models and the patent index are too big for git. Build them once (or download them from the project's Hugging Face Hub repo once it's published):
+
 ```bash
-cp .env.example .env
+# 100k-patent prior-art index (streams HUPD, then builds BM25 + vectors + text store)
+python -m retrieval.build_corpus --per-year 20000
+python -m retrieval.build_index --index retrieval/index
+
+# CPC classifier (GPU; the v2 run was trained on Kaggle 2x T4)
+python -m cpc_classifier.data_prep
+python -m cpc_classifier.train --epochs 3
+
+# disclosure cross-encoder (trained on PANORAMA PI4PC)
+python -m disclosure_model.train_ce --backbone AI-Growth-Lab/PatentSBERTa --out disclosure_model/ce_patentsberta
+
+# examiner-outcome model + cautious cutoff (validation only)
+python -m eval.run_noc4pc --split validation
+python -m eval.train_outcome
+python -m eval.tune_allow
 ```
-*(Open `.env` and add your `GEMINI_API_KEY`)*
 
----
+Every script has a `--quick` or `--smoke` option for a small test run.
 
-## 💻 Usage
+### 3. Run it
 
-### 1. Run the interactive Dashboard (Recommended)
-Launch the Streamlit frontend to explore the data dynamically:
 ```bash
-streamlit run app.py
-```
-*Navigate to `http://localhost:8501` in your browser.*
+# build the website once
+cd frontend && npm install && npm run build && cd ..
 
-### 2. Run the CLI Pipeline 
-If you simply want to execute the analytics pipeline and generate outputs programmatically:
+# start the API, which also serves the website
+uvicorn api.main:app --port 8000
+```
+
+Open **http://localhost:8000**, or **http://localhost:8000/docs** for the interactive API docs. Models take about a minute to load, and the status dot turns green when they're ready.
+
+For frontend development with hot reload, run `npm run dev` in `frontend/` (port 3000). It talks to the API on port 8000.
+
+### 4. Test
+
 ```bash
-python main.py
+pytest tests/test_api.py -s       # real models: lookup -> CPC -> full analysis
 ```
 
 ---
 
-## 📊 Example Output
-When processing a patent, the engine returns quantitative matching:
-> **Claim:** "A navigation system comprising a neural network module for real-time trajectory calculation." <br>
-> **Verdict:** `WEAK INVENTIVE` <br>
-> **Reason:** Strong semantic similarity (0.89) to Patent-B. Uses the same core components (navigation system, sensor) but introduces novel unmapped functions (neural network trajectory calculation).
+## Project layout
 
-It will also output **Knowledge Graphs** plotting the literal relations.
+```text
+analysis/           extraction, claim features, disclosure scoring, EPO engine, outcome model
+api/                FastAPI app: documents, CPC suggestions, analysis jobs
+cpc_classifier/     Layer 1: data prep, training, prediction
+retrieval/          Layers 2-3: corpus, BM25 + vector index, text store, claim matcher
+disclosure_model/   patent cross-encoder training
+eval/               PANORAMA evaluation, tuning, outcome training, error analysis
+frontend/           Next.js 15 app (static export served by FastAPI)
+tests/              API tests against the real models
+docs/               PROJECT.md (full write-up) and README diagrams
+```
 
----
-
-## 🔮 Future Improvements
-As an open-source project, there is massive room for scale. Planned upgrades include:
-* **Database Integration:** Replacing `/data` stubs with a vector database (like Pinecone or ChromaDB) hosting real USPTO patent records.
-* **Finer Thresholds:** Utilizing fine-tuned BERT models specializing in patent legalese rather than standard Mini-LM embeddings.
-* **Component Weighting:** Assigning TF-IDF or probabilistic weights to certain physical components based on field of invention.
-
----
-
-## 🤝 Contributing
-Contributions are always welcome. To contribute:
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+The root-level `app.py`, `main.py`, `comparator.py` and similar files are the **first prototype** (Streamlit + MiniLM). They're kept for history and will be removed in a later cleanup.
 
 ---
 
-## 🛡️ License
-Distributed under the MIT License. See `LICENSE` for more information.
+## Tech stack
+
+| Area | Tools |
+|---|---|
+| Models | PyTorch, Hugging Face Transformers, Sentence-Transformers, PatentSBERTa, LightGBM, SHAP |
+| Search | bm25s, NumPy memory-mapped vectors, Reciprocal Rank Fusion, SQLite |
+| NLP | spaCy, custom claim parser, PyMuPDF / pdfplumber / python-docx |
+| Backend | FastAPI, Uvicorn, background job worker |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
+| Training | Kaggle 2× T4, fp16, grouped cross-validation |
 
 ---
 
-<div align="center">
-  <b>Built for AI/ML Architects and NLP Engineers.</b>
-</div>
+## Contributing
+
+Contributions are welcome: bug reports, ideas, or code.
+
+1. **Open an issue first** for anything bigger than a small fix, so we can agree on the approach.
+2. **Fork** the repo and create a branch: `git checkout -b feat/short-name`.
+3. **Keep the evaluation honest:**
+   - tune only on validation data;
+   - never look at the test set while developing;
+   - report new numbers next to their baseline.
+4. **Run the tests** (`pytest tests/test_api.py -s`) and `npm run lint` in `frontend/`.
+5. **Write clear commits** in the [Conventional Commits](https://www.conventionalcommits.org/) style (`feat:`, `fix:`, `docs:` ...).
+6. **Open a pull request** describing what changed, why, and how you tested it. Include screenshots for UI changes.
+
+**Please don't commit:**
+- model weights, the index, or datasets (they're in `.gitignore`);
+- `.env` files or API keys.
+
+---
+
+## Data and licences
+
+| Dataset | Use | Licence |
+|---|---|---|
+| [HUPD](https://huggingface.co/datasets/HUPD/hupd) (Harvard USPTO Patent Dataset) | CPC training, 100k prior-art corpus | CC BY-SA 4.0 |
+| [PANORAMA](https://huggingface.co/datasets/LG-AI-Research/PANORAMA) (LG AI Research) | evaluation, disclosure-model training | CC BY-NC 4.0 (non-commercial) |
+
+Because PANORAMA is non-commercial, the trained disclosure model is for non-commercial use only. The pretrained encoder is [PatentSBERTa](https://huggingface.co/AI-Growth-Lab/PatentSBERTa) (AI Growth Lab).
+
+<div align="center"><sub>Built by <a href="https://github.com/KalpeshEragi">Kalpesh Eragi</a></sub></div>

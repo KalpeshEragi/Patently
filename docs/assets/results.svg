@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" width="960" height="430" role="img" aria-labelledby="t d">
+  <title id="t">Results on held-out data</title>
+  <desc id="d">Disclosure model top-1: random 20%, general NLI 44.8%, patent cross-encoder 53.7%. False-allow rate: rule engine 30.2%, plain model 20.6%, cautious model 12.8%. Macro-F1: random 0.309, tuned rules 0.379, outcome model 0.494.</desc>
+  <defs>
+    <style>
+      .sans { font-family: Inter, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .h { font-size: 16px; font-weight: 700; fill: #f3f1ea; }
+      .p { font-size: 12.5px; fill: #a9b6c7; }
+      .lbl { font-size: 12.5px; fill: #c9d3e0; }
+      .val { font-size: 13px; font-weight: 700; fill: #f3f1ea; }
+      .note { font-size: 11.5px; fill: #7f8ea3; }
+    </style>
+  </defs>
+  <rect width="960" height="430" rx="20" fill="#0f1724"/>
+  <text x="40" y="50" class="sans" font-size="22" font-weight="700" fill="#f3f1ea">Measured on real examiner decisions</text>
+  <text x="40" y="74" class="sans p">PANORAMA (USPTO office actions). Splits by application; tuned on validation; test set held out.</text>
+
+  <g class="sans">
+    <!-- panel 1: higher is better; scale 0-60% over 200px -->
+    <g transform="translate(40 104)">
+      <rect width="280" height="296" rx="14" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+      <text x="20" y="32" class="h">Finds the cited paragraph</text>
+      <text x="20" y="52" class="p">Top-1 out of 5 candidates · higher is better</text>
+      <text x="20" y="96" class="lbl">Random guess</text>
+      <rect x="20" y="104" width="67" height="16" rx="4" fill="#3a4659"/><text x="95" y="117" class="val">20%</text>
+      <text x="20" y="152" class="lbl">General NLI model</text>
+      <rect x="20" y="160" width="149" height="16" rx="4" fill="#4f6585"/><text x="177" y="173" class="val">44.8%</text>
+      <text x="20" y="208" class="lbl">Patent cross-encoder (ours)</text>
+      <rect x="20" y="216" width="179" height="16" rx="4" fill="#5aa9e6"/><text x="207" y="229" class="val">53.7%</text>
+      <text x="20" y="272" class="note">PI4PC validation · PatentSBERTa backbone</text>
+    </g>
+
+    <!-- panel 2: lower is better; scale 0-35% over 200px -->
+    <g transform="translate(340 104)">
+      <rect width="280" height="296" rx="14" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+      <text x="20" y="32" class="h">Wrongly says "allowed"</text>
+      <text x="20" y="52" class="p">On rejected claims · lower is better</text>
+      <text x="20" y="96" class="lbl">Rule engine (tuned)</text>
+      <rect x="20" y="104" width="173" height="16" rx="4" fill="#3a4659"/><text x="201" y="117" class="val">30.2%</text>
+      <text x="20" y="152" class="lbl">Outcome model, plain</text>
+      <rect x="20" y="160" width="118" height="16" rx="4" fill="#4f6585"/><text x="146" y="173" class="val">20.6%</text>
+      <text x="20" y="208" class="lbl">Outcome model, cautious</text>
+      <rect x="20" y="216" width="73" height="16" rx="4" fill="#6fcf97"/><text x="101" y="229" class="val">12.8%</text>
+      <text x="20" y="272" class="note">87.2% of rejected claims flagged · 2,878-claim test</text>
+    </g>
+
+    <!-- panel 3: higher is better; scale 0-0.55 over 200px -->
+    <g transform="translate(640 104)">
+      <rect width="280" height="296" rx="14" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+      <text x="20" y="32" class="h">Predicts the examiner</text>
+      <text x="20" y="52" class="p">§102 / §103 / allowed, macro-F1</text>
+      <text x="20" y="96" class="lbl">Random</text>
+      <rect x="20" y="104" width="112" height="16" rx="4" fill="#3a4659"/><text x="140" y="117" class="val">0.309</text>
+      <text x="20" y="152" class="lbl">Rule engine (tuned)</text>
+      <rect x="20" y="160" width="138" height="16" rx="4" fill="#4f6585"/><text x="166" y="173" class="val">0.379</text>
+      <text x="20" y="208" class="lbl">LightGBM outcome model</text>
+      <rect x="20" y="216" width="180" height="16" rx="4" fill="#c4a7e7"/><text x="208" y="229" class="val">0.494</text>
+      <text x="20" y="272" class="note">validation CV 0.517 · close to test, not overfit</text>
+    </g>
+  </g>
+</svg>

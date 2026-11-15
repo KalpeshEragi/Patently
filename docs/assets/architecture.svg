@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" role="img" aria-labelledby="t d">
+  <title id="t">System architecture</title>
+  <desc id="d">A Next.js static site served by FastAPI, which runs analysis jobs in a worker using four models and an on-disk patent index.</desc>
+  <defs>
+    <style>
+      .sans { font-family: Inter, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .mono { font-family: "JetBrains Mono", Consolas, Menlo, monospace; font-size: 12px; fill: #9fb0c4; }
+      .h { font-size: 16px; font-weight: 700; fill: #f3f1ea; }
+      .p { font-size: 12.5px; fill: #a9b6c7; }
+      .tag { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; }
+    </style>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#5a6f8c"/>
+    </marker>
+  </defs>
+  <rect width="960" height="400" rx="20" fill="#0f1724"/>
+  <text x="40" y="50" class="sans" font-size="22" font-weight="700" fill="#f3f1ea">Architecture</text>
+  <text x="40" y="74" class="sans p">One server, one port: FastAPI serves the API and the built website.</text>
+
+  <g class="sans">
+    <!-- frontend -->
+    <rect x="40" y="110" width="250" height="250" rx="14" fill="#ffffff" fill-opacity="0.05" stroke="#8fb8de" stroke-opacity="0.45"/>
+    <text x="62" y="140" class="tag" fill="#8fb8de">FRONTEND</text>
+    <text x="62" y="166" class="h">Next.js 15 · React 19</text>
+    <text x="62" y="186" class="p">TypeScript · Tailwind 4</text>
+    <text x="62" y="206" class="p">static export → frontend/out</text>
+    <g class="p">
+      <text x="62" y="244">1  Upload or look up</text>
+      <text x="62" y="266">2  Confirm CPC areas</text>
+      <text x="62" y="288">3  Live progress</text>
+      <text x="62" y="310">4  Claim-by-claim report</text>
+    </g>
+
+    <path d="M292 235H346" stroke="#5a6f8c" stroke-width="2" marker-end="url(#a)" marker-start="url(#a)"/>
+    <text x="319" y="225" class="sans" font-size="11" fill="#7f8ea3" text-anchor="middle">JSON</text>
+
+    <!-- api -->
+    <rect x="350" y="110" width="260" height="250" rx="14" fill="#ffffff" fill-opacity="0.05" stroke="#9fe0cf" stroke-opacity="0.45"/>
+    <text x="372" y="140" class="tag" fill="#9fe0cf">BACKEND</text>
+    <text x="372" y="166" class="h">FastAPI · background jobs</text>
+    <text x="372" y="200" class="mono">GET  /api/health</text>
+    <text x="372" y="220" class="mono">POST /api/documents</text>
+    <text x="372" y="240" class="mono">POST /api/documents/lookup</text>
+    <text x="372" y="260" class="mono">POST /api/cpc/suggest</text>
+    <text x="372" y="280" class="mono">POST /api/analyses</text>
+    <text x="372" y="300" class="mono">GET  /api/analyses/{id}</text>
+    <text x="372" y="336" class="p">models load once, in the background</text>
+
+    <path d="M612 235H666" stroke="#5a6f8c" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- models + index -->
+    <rect x="670" y="110" width="250" height="132" rx="14" fill="#ffffff" fill-opacity="0.05" stroke="#e9c46a" stroke-opacity="0.45"/>
+    <text x="692" y="140" class="tag" fill="#e9c46a">MODELS</text>
+    <g class="p">
+      <text x="692" y="164">CPC classifier (PatentSBERTa)</text>
+      <text x="692" y="184">PatentSBERTa embeddings</text>
+      <text x="692" y="204">Disclosure cross-encoder</text>
+      <text x="692" y="224">LightGBM outcome + SHAP</text>
+    </g>
+    <rect x="670" y="254" width="250" height="106" rx="14" fill="#ffffff" fill-opacity="0.05" stroke="#c4a7e7" stroke-opacity="0.45"/>
+    <text x="692" y="284" class="tag" fill="#c4a7e7">INDEX (ON DISK)</text>
+    <g class="p">
+      <text x="692" y="306">BM25 keyword index</text>
+      <text x="692" y="326">memory-mapped vectors (fp16)</text>
+      <text x="692" y="346">SQLite text store</text>
+    </g>
+  </g>
+</svg>
