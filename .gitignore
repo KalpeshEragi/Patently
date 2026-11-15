@@ -1,7 +1,9 @@
 .env
 __pycache__/
 venv/
-outputs/cpc_classifier/data/
+outputs/
+cpc_classifier/data/
+.claude/
 cpc_classifier/model/
 cpc_classifier/model_v2test/
 retrieval/index/

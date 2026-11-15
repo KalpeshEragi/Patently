@@ -123,7 +123,7 @@ def _worker():
 # App
 # ----------------------------------------------------------------------------
 app = FastAPI(title="Patent Analyser API", version="1.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                    allow_methods=["*"], allow_headers=["*"])
 
 
@@ -232,7 +232,7 @@ def get_analysis(job_id: str):
     return out
 
 
-# the built React app (M3) is served from the same server when present
-_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+# the built Next.js app (static export) is served from the same server when present
+_dist = Path(__file__).resolve().parent.parent / "frontend" / "out"
 if _dist.exists():
     app.mount("/", StaticFiles(directory=_dist, html=True), name="frontend")
